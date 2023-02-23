@@ -4,6 +4,8 @@ A C++ Library for Planar Visibility Computations
 
 See also <https://karlobermeyer.github.io/VisiLibity1/>.
 
+According to http://www.science.smith.edu/~istreinu/Teaching/Courses/274/Spring98/Projects/Philip/fp/visibility.htm
+1. O(n3) naïve algorithm – This algorithm compares every pair of points in the set of obstacles, and check if they intersect with any edges of obstacles. If a pair of points do not intersect with any edge, and that the pair is external to the obstacles, they are visibility edges. Otherwise, they are not. For a set of obstacles with n vertices in total, each vertex can pair up with (n – 1) other vertices. This will give O(n2). Each pair of points have to be compared with n edges (a set of obstacles with n vertices have n edges). This will give an O(n3) overall time complexity. This is the algorithm used in the Java applet described above.
 
 
 ## Using

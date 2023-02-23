@@ -1698,15 +1698,15 @@ bool Environment::is_valid(double epsilon) const {
     }
 
   // Check none of the Polygons' boundaries intersect w/in epsilon.
-  for (unsigned i = 0; i < h(); i++)
-    if (boundary_distance(outer_boundary_, holes_[i]) <= epsilon) {
-      std::cerr << std::endl
-                << "\x1b[31m"
-                << "The outer boundary intersects the boundary of hole " << i
-                << "."
-                << "\x1b[0m" << std::endl;
-      return false;
-    }
+  // for (unsigned i = 0; i < h(); i++)
+  //   if (boundary_distance(outer_boundary_, holes_[i]) <= epsilon) {
+  //     std::cerr << std::endl
+  //               << "\x1b[31m"
+  //               << "The outer boundary intersects the boundary of hole " << i
+  //               << "."
+  //               << "\x1b[0m" << std::endl;
+  //     return false;
+  //   }
   for (unsigned i = 0; i < h(); i++)
     for (unsigned j = i + 1; j < h(); j++)
       if (boundary_distance(holes_[i], holes_[j]) <= epsilon) {
@@ -1724,14 +1724,14 @@ bool Environment::is_valid(double epsilon) const {
   for (unsigned i = 0; i < h(); i++) {
     // Loop over vertices of a hole
     for (unsigned j = 0; j < holes_[i].n(); j++) {
-      if (!holes_[i][j].in(outer_boundary_, epsilon)) {
-        std::cerr << std::endl
-                  << "\x1b[31m"
-                  << "Vertex " << j << " of hole " << i
-                  << " is not within the outer boundary."
-                  << "\x1b[0m" << std::endl;
-        return false;
-      }
+      // if (!holes_[i][j].in(outer_boundary_, epsilon)) {
+      //   std::cerr << std::endl
+      //             << "\x1b[31m"
+      //             << "Vertex " << j << " of hole " << i
+      //             << " is not within the outer boundary."
+      //             << "\x1b[0m" << std::endl;
+      //   return false;
+      // }
       // Second loop over holes.
       for (unsigned k = 0; k < h(); k++)
         if (i != k and holes_[i][j].in(holes_[k], epsilon)) {
@@ -1813,6 +1813,7 @@ Polyline Environment::shortest_path(const Point &start, const Point &finish,
   // true  => data printed to terminal
   // false => silent
   const bool PRINTING_DEBUG_DATA = false;
+  double eps = 0.0001;
 
   // For now, just find one shortest path, later change this to a
   // vector to find all shortest paths (w/in epsilon).
@@ -1922,6 +1923,16 @@ Polyline Environment::shortest_path(const Point &start, const Point &finish,
     if (current_node.vertex_index == n()) {
       // loop over environment vertices
       for (unsigned i = 0; i < n(); i++) {
+        // bool is_forbidden = false;
+        // // check for forbidden point
+        // for (auto &fp : forbidden_points_)
+        //   if (distance(fp, (*this)(i)) < eps)
+        //   {
+        //     is_forbidden = true;
+        //     break;
+        //   }
+        // if (is_forbidden)
+        //   continue;
         if (start_visible[i]) {
           child.vertex_index = i;
           child.parent_search_tree_location = current_node.search_tree_location;
@@ -1939,8 +1950,22 @@ Polyline Environment::shortest_path(const Point &start, const Point &finish,
     // else current_node corresponds to a vertex of the environment
     else {
       // check which environment vertices are visible
+      // can use Kdtree to check for nearest vertices
       for (unsigned i = 0; i < n(); i++) {
+
+        // bool is_forbidden = false;
         if (current_node.vertex_index != i)
+        {
+          // check for forbidden point
+          // for (auto &fp : forbidden_points_)
+          //   if (distance(fp, (*this)(i)) < eps)
+          //   {
+          //     is_forbidden = true;
+          //     break;
+          //   }
+          // if (is_forbidden)
+          //   continue;
+
           if (visibility_graph(current_node.vertex_index, i)) {
             child.vertex_index = i;
             child.parent_search_tree_location =
@@ -1956,6 +1981,7 @@ Polyline Environment::shortest_path(const Point &start, const Point &finish,
               child.print();
             }
           }
+        }
       }
       // check if finish is visible
       if (finish_visible[current_node.vertex_index]) {
@@ -2090,6 +2116,29 @@ Polyline Environment::shortest_path(const Point &start, const Point &finish,
                                     double epsilon) {
   return shortest_path(start, finish, Visibility_Graph(*this, epsilon),
                        epsilon);
+}
+
+bool Environment::pass_boundary_check(const Point p, Bounding_Box bb,
+                                    double epsilon) {
+  if (p.x() + epsilon < bb.x_max && 
+    p.x() - epsilon > bb.x_min &&
+    p.y() + epsilon < bb.y_max &&
+    p.y() - epsilon > bb.y_min)
+    return true;
+  
+  return false;
+}
+
+void Environment::update_forbidden_points(
+  const Polygon &poly, double epsilon)
+{
+  Bounding_Box bounding_box = bbox();
+  
+  for (int i = 0; i < n(); i++)
+  {
+    if (!pass_boundary_check(poly[i], bounding_box, epsilon))
+      forbidden_points_.emplace_back(poly[i]);
+  }
 }
 
 void Environment::write_to_file(const std::string &filename,

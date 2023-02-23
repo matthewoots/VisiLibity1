@@ -1447,6 +1447,13 @@ public:
     std::vector<Polygon> cells;
     return cells;
   }
+
+  bool pass_boundary_check(const Point p, Bounding_Box bb,
+                          double epsilon);
+
+  void update_forbidden_points(const Polygon &poly, 
+    double epsilon = 0.01);
+
   /** \brief  write lists of vertices to *.environment file
    *
    * uses intuitive human and computer readable decimal format with
@@ -1489,11 +1496,16 @@ public:
   /// set outer boundary
   void set_outer_boundary(const Polygon &polygon_temp) {
     outer_boundary_ = polygon_temp;
-    update_flattened_index_key();
+    // update_flattened_index_key();
+    is_outer_boundary = true;
   }
   /// add hole
   void add_hole(const Polygon &polygon_temp) {
     holes_.push_back(polygon_temp);
+
+    assert(is_outer_boundary);
+    update_forbidden_points(polygon_temp);
+
     update_flattened_index_key();
   }
   /** \brief enforces outer boundary vertices are listed ccw and
@@ -1525,6 +1537,11 @@ public:
   void reverse_holes();
 
 private:
+
+  bool is_outer_boundary = false;
+  // restrict points that violate boundary
+  std::vector<Point> forbidden_points_;
+  // boundary
   Polygon outer_boundary_;
   // obstacles
   std::vector<Polygon> holes_;
