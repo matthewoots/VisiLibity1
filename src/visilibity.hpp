@@ -345,6 +345,8 @@ public:
   void snap_to_boundary_of(const Environment &environment_temp,
                            double epsilon = 0.0);
 
+  bool is_blacklisted = false;
+
 protected:
   double x_;
   double y_;

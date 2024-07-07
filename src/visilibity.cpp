@@ -1677,9 +1677,13 @@ bool Environment::is_in_standard_form() const {
 }
 
 bool Environment::is_valid(double epsilon) const {
+  // printf("0. Intitiate\n");
+  // printf("1. number of vertex %d\n", n());
+  // printf("2. hole count %d\n", h());
   if (n() <= 2)
     return false;
-
+  if (h() == 0)
+    return false;
   // Check all Polygons are simple.
   if (!outer_boundary_.is_simple(epsilon)) {
     std::cerr << std::endl
@@ -1688,6 +1692,7 @@ bool Environment::is_valid(double epsilon) const {
               << "\x1b[0m" << std::endl;
     return false;
   }
+  // printf("3. polygons are simple\n");
   for (unsigned i = 0; i < h(); i++)
     if (!holes_[i].is_simple(epsilon)) {
       std::cerr << std::endl
@@ -1707,6 +1712,7 @@ bool Environment::is_valid(double epsilon) const {
   //               << "\x1b[0m" << std::endl;
   //     return false;
   //   }
+  // printf("4. hole not simple\n");
   for (unsigned i = 0; i < h(); i++)
     for (unsigned j = i + 1; j < h(); j++)
       if (boundary_distance(holes_[i], holes_[j]) <= epsilon) {
@@ -1717,7 +1723,7 @@ bool Environment::is_valid(double epsilon) const {
                   << "\x1b[0m" << std::endl;
         return false;
       }
-
+  // printf("5. hole boundary check\n");
   // Check that the vertices of each hole are in the outside_boundary
   // and not in any other holes.
   // Loop over holes.
@@ -1744,7 +1750,7 @@ bool Environment::is_valid(double epsilon) const {
         }
     }
   }
-
+  // printf("6. Vertex of another hole is in a hole\n");
   // Check outer_boundary is ccw and holes are cw.
   if (outer_boundary_.area() <= 0) {
     std::cerr << std::endl
@@ -1753,6 +1759,7 @@ bool Environment::is_valid(double epsilon) const {
               << "\x1b[0m" << std::endl;
     return false;
   }
+  // printf("7. outer boundary is CCW\n");
   for (unsigned i = 0; i < h(); i++)
     if (holes_[i].area() >= 0) {
       std::cerr << std::endl
@@ -1761,6 +1768,7 @@ bool Environment::is_valid(double epsilon) const {
                 << "\x1b[0m" << std::endl;
       return false;
     }
+  // printf("8. Vertices of hole is CW\n");
 
   return true;
 }
@@ -1919,25 +1927,22 @@ Polyline Environment::shortest_path(const Point &start, const Point &finish,
                 << "-------------------------------------------" << std::endl;
     }
 
+    double penalty = std::pow(10.0, 8);
+
     // if current_node corresponds to start
     if (current_node.vertex_index == n()) {
       // loop over environment vertices
-      for (unsigned i = 0; i < n(); i++) {
-        // bool is_forbidden = false;
-        // // check for forbidden point
-        // for (auto &fp : forbidden_points_)
-        //   if (distance(fp, (*this)(i)) < eps)
-        //   {
-        //     is_forbidden = true;
-        //     break;
-        //   }
-        // if (is_forbidden)
-        //   continue;
+      for (unsigned i = 0; i < n(); i++) {        
         if (start_visible[i]) {
           child.vertex_index = i;
           child.parent_search_tree_location = current_node.search_tree_location;
-          child.cost_to_come = distance(start, (*this)(i));
-          child.estimated_cost_to_go = distance((*this)(i), finish);
+          child.cost_to_come = 
+            !(*this)(i).is_blacklisted ? distance(start, (*this)(i)) : 
+            distance(start, (*this)(i)) + penalty;
+          child.estimated_cost_to_go = !(*this)(i).is_blacklisted ? 
+          distance((*this)(i), finish) : distance((*this)(i), finish) + penalty;
+          /** @brief Debug cost_to_come and cost_to_go **/
+          // printf("%lf %lf\n", child.cost_to_come, child.estimated_cost_to_go);
           children.push_back(child);
 
           if (PRINTING_DEBUG_DATA) {
@@ -1952,28 +1957,22 @@ Polyline Environment::shortest_path(const Point &start, const Point &finish,
       // check which environment vertices are visible
       // can use Kdtree to check for nearest vertices
       for (unsigned i = 0; i < n(); i++) {
-
-        // bool is_forbidden = false;
         if (current_node.vertex_index != i)
         {
-          // check for forbidden point
-          // for (auto &fp : forbidden_points_)
-          //   if (distance(fp, (*this)(i)) < eps)
-          //   {
-          //     is_forbidden = true;
-          //     break;
-          //   }
-          // if (is_forbidden)
-          //   continue;
-
           if (visibility_graph(current_node.vertex_index, i)) {
+
             child.vertex_index = i;
             child.parent_search_tree_location =
                 current_node.search_tree_location;
             child.cost_to_come =
-                current_node.cost_to_come +
-                distance((*this)(current_node.vertex_index), (*this)(i));
-            child.estimated_cost_to_go = distance((*this)(i), finish);
+                !(*this)(i).is_blacklisted ? current_node.cost_to_come +
+                distance((*this)(current_node.vertex_index), (*this)(i)) : 
+                current_node.cost_to_come + distance((*this)(current_node.vertex_index), (*this)(i)) + penalty;
+            child.estimated_cost_to_go = 
+                !(*this)(i).is_blacklisted ? distance((*this)(i), finish) :
+                distance((*this)(i), finish) + penalty;
+            /** @brief Debug cost_to_come and cost_to_go **/
+            // printf("%lf %lf\n", child.cost_to_come, child.estimated_cost_to_go);
             children.push_back(child);
 
             if (PRINTING_DEBUG_DATA) {
